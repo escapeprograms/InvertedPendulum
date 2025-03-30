@@ -214,14 +214,11 @@ def _reload(
         return m, d
 
 
-def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], genomes): #controllers is an array of Controllers
+def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType]):
     """Physics loop for the GUI, to be run in a separate thread."""
     m: mujoco.MjModel = None
     d: mujoco.MjData = None
     reload = True
-
-    #track which controller we are training
-    g = 0
 
     # CPU-sim synchronization point.
     synccpu = 0.0
@@ -246,14 +243,13 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
             simulate.uiloadrequest_decrement()
             reload = True
 
-        #reload the simulation
         if reload and loader is not None:
             result = _reload(simulate, loader)
             if result is not None:
                 m, d = result
                 mujoco.mj_step(m, d)
                 # pend_ctrl = PendulumCtrlExample.BalanceCtrl(m,d)
-                pend_ctrl = YourControlCode.GenomeCtrl(m,d,genomes[g].network)#YourControlCode.YourCtrl(m,d)
+                pend_ctrl = YourControlCode.YourCtrl(m,d)
 
         reload = False
 
@@ -262,8 +258,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
             time.sleep(0)
         else:
             time.sleep(0.001)
-
-        EXIT_PLS = False #flag for exiting the simulation
+        EXIT_PLS = False
         with simulate.lock():
             if m is not None:
                 assert d is not None
@@ -277,7 +272,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
 
                     # Update control signal
                     pend_ctrl.CtrlUpdate()
-                    pushing_trial_gap = 2
+                    pushing_trial_gap = 4.0
                     pushing_duration = 0.1
                     
                     if(next_pushing_time < d.time and d.time < next_pushing_time + pushing_duration/2):
@@ -298,35 +293,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         print("Next Pushing Force: ", push_force)
  
                     # if joint positions are out of range, exit simulation
-                    # if we wait too long, end simulation
-                    # if the last joint is bent over backward, end the simulation
-                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2) or balance_count >= 10 or d.qpos[4] < -np.pi/2:
+                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2):
                         print("Final Balance Count: ", balance_count)
-                        print("Final time", d.time)
-
-                        #update fitness score
-                        #penalize too much sidways movement
-                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2)
-                        # print(np.abs(d.qvel[0]))
-                        #reset sim for next controller
-                        g += 1
-                        if g >= len(genomes):
-                            # set exit simulation flag
-                            EXIT_PLS = True
-                            # exit(0)
-                        
-                        balance_count = 0
-
-                        next_pushing_time = 0.5
-                        push_force = 0.0005
-                        balance_count = 0
-                        point = np.zeros((3,))
-                        force = np.zeros((3,))
-                        torque = np.zeros((3,))
-                        reload = True
-
-                        
-                        # exit(0)
+                        EXIT_PLS = True
+                        #exit(0)
 
                     # Inject noise.
                     if simulate.ctrl_noise_std != 0.0:
@@ -384,9 +354,8 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     # Run mj_forward, to update rendering and joint sliders.
                     mujoco.mj_forward(m, d)
                     simulate.speed_changed = True
-        #exit simulation if flag is up
         if EXIT_PLS:
-                simulate.exit()
+            simulate.exit()
 
 
 def _launch_internal(
@@ -397,9 +366,8 @@ def _launch_internal(
         loader: Optional[_InternalLoaderType] = None,
         handle_return: Optional['queue.Queue[Handle]'] = None,
         key_callback: Optional[KeyCallbackType] = None,
-        show_left_ui: bool = False,
-        show_right_ui: bool = False,
-        genomes #pass in genome array
+        show_left_ui: bool = True,
+        show_right_ui: bool = True,
 ) -> None:
     """Internal API, so that the public API has more readable type annotations."""
     if model is None and data is not None:
@@ -450,7 +418,7 @@ def _launch_internal(
 
     if run_physics_thread:
         side_thread = threading.Thread(
-            target=_physics_loop, args=(simulate, loader, genomes))
+            target=_physics_loop, args=(simulate, loader))
     else:
         side_thread = threading.Thread(
             target=_reload, args=(simulate, loader, notify_loaded))
@@ -490,11 +458,9 @@ def launch(
     )
 
 
-def launch_from_path(path: str,
-        genomes #pass in genome array
-        ) -> None:
+def launch_from_path(path: str) -> None:
     """Launches the Simulate GUI from file path."""
-    _launch_internal(run_physics_thread=True, loader=_file_loader(path), genomes=genomes)
+    _launch_internal(run_physics_thread=True, loader=_file_loader(path))
 
 
 def launch_passive(
@@ -564,7 +530,5 @@ if __name__ == '__main__':
     robot_model = os.path.join(dir_path, "./Robot/miniArm_with_pendulum.xml")
 
     # Initialize the viewer and start the simulation
-    genes = [YourControlCode.Genome(0,None), YourControlCode.Genome(0,None)]
-    launch_from_path(robot_model, genes)
-
-    print(genes[0].fitness, "FITNESS")
+    launch_from_path(robot_model)
+    print("oop")

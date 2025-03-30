@@ -1,3 +1,4 @@
+import pickle
 import os
 import neat
 from YourControlCode import Genome
@@ -12,7 +13,6 @@ robot_model = os.path.join(dir_path, "./Robot/miniArm_with_pendulum.xml")
 def eval_genomes(genomes, config):
     genome_list = []
     for genome_id, genome in genomes:
-        genome.fitness = 4.0
         network = neat.nn.FeedForwardNetwork.create(genome, config)
         genome_list.append(Genome(genome_id, network))
 
@@ -37,20 +37,13 @@ def run(config_file):
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(5))
+    # p.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 20 generations.
     winner = p.run(eval_genomes, 20)
 
-    # Display the winning genome.
-    print('\nBest genome:\n{!s}'.format(winner))
-
-    # Show output of the most fit genome against training data.
-    print('\nOutput:')
     winner_net = neat.nn.FeedForwardNetwork.create(winner, config)
-
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-4')
-    p.run(eval_genomes, 10)
+    return winner_net
 
 
 if __name__ == '__main__':
@@ -59,4 +52,9 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config')
-    run(config_path)
+    winner = run(config_path)
+
+    #save model
+    with open("neat-model.pkl", "wb") as f:
+        pickle.dump(winner, f)
+    
