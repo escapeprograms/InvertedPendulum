@@ -226,6 +226,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     # CPU-sim synchronization point.
     synccpu = 0.0
     syncsim = 0.0
+
+    frame_count = 0#frame counter
+    max_movement = 0
+    total_instability = 0
     next_pushing_time = 0.5
     push_force = 0.0005
     balance_count = 0
@@ -277,7 +281,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
 
                     # Update control signal
                     pend_ctrl.CtrlUpdate()
-                    pushing_trial_gap = 2
+                    pushing_trial_gap = 4
                     pushing_duration = 0.1
                     
                     if(next_pushing_time < d.time and d.time < next_pushing_time + pushing_duration/2):
@@ -293,10 +297,17 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     if(next_pushing_time + pushing_duration + 0.5 < d.time):
                         balance_count += 1
                         next_pushing_time += pushing_trial_gap
-                        push_force += 0.001
+                        push_force += 0.005
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
- 
+
+                    #update max movement
+                    max_movement = max(max_movement, np.abs(d.qvel[0]))
+                    #update instability total
+                    total_instability += np.abs(d.qvel[6])
+                    #update frame count
+                    frame_count += 1
+
                     # if joint positions are out of range, exit simulation
                     # if we wait too long, end simulation
                     # if the last joint is bent over backward, end the simulation
@@ -306,7 +317,14 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
 
                         #update fitness score
                         #penalize too much sidways movement
-                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2)
+                        time_held = d.time
+                        movement_penalty = max_movement
+                        instability_penalty = total_instability/frame_count #estimate the amount of "wobbling" there is
+                        genomes[g].fitness = time_held- instability_penalty/5 #TODO: try 1/instability_penalty
+
+                        
+                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty)
+                        print("Fitness: ", genomes[g].fitness)
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
                         g += 1
@@ -314,9 +332,9 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                             # set exit simulation flag
                             EXIT_PLS = True
                             # exit(0)
-                        
+                        frame_count = 0
                         balance_count = 0
-
+                        total_instability = 0
                         next_pushing_time = 0.5
                         push_force = 0.0005
                         balance_count = 0

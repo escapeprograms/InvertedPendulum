@@ -38,8 +38,8 @@ class GenomeCtrl:
 #Your final Control
 class YourCtrl(GenomeCtrl):
     def __init__(self, m:mujoco.MjModel, d: mujoco.MjData):
-        #load model
-        with open("models/neat-model 2.pkl", "rb") as f:
+        #load model from folder
+        with open("models/neat-model 4.pkl", "rb") as f:
             network = pickle.load(f)
         
         super().__init__(m, d, network)
