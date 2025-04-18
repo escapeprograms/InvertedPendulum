@@ -228,7 +228,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     syncsim = 0.0
 
     frame_count = 0#frame counter
-    max_movement = 0
+    total_movement = 0
     total_instability = 0
     next_pushing_time = 0.5
     push_force = 0.0005
@@ -302,7 +302,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         print("Next Pushing Force: ", push_force)
 
                     #update max movement
-                    max_movement = max(max_movement, np.abs(d.qvel[0]))
+                    total_movement += np.abs(d.qvel[0])
                     #update instability total
                     total_instability += np.abs(d.qvel[6])
                     #update frame count
@@ -318,9 +318,9 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         #update fitness score
                         #penalize too much sidways movement
                         time_held = d.time
-                        movement_penalty = max_movement
+                        movement_penalty = total_movement/frame_count
                         instability_penalty = total_instability/frame_count #estimate the amount of "wobbling" there is
-                        genomes[g].fitness = time_held- instability_penalty/5 #TODO: try 1/instability_penalty
+                        genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4
 
                         
                         print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty)
@@ -334,6 +334,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                             # exit(0)
                         frame_count = 0
                         balance_count = 0
+                        total_movement = 0
                         total_instability = 0
                         next_pushing_time = 0.5
                         push_force = 0.0005
@@ -582,7 +583,8 @@ if __name__ == '__main__':
     robot_model = os.path.join(dir_path, "./Robot/miniArm_with_pendulum.xml")
 
     # Initialize the viewer and start the simulation
-    genes = [YourControlCode.Genome(0,None), YourControlCode.Genome(0,None)]
-    launch_from_path(robot_model, genes)
+    print("Please run Train.py instead.")
+    # genes = [YourControlCode.Genome(0,None), YourControlCode.Genome(0,None)]
+    # launch_from_path(robot_model, genes)
 
-    print(genes[0].fitness, "FITNESS")
+    # print(genes[0].fitness, "FITNESS")
