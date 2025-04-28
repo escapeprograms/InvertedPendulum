@@ -237,6 +237,9 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     force = np.zeros((3,))
     torque = np.zeros((3,))
     down_posture_start_time = 0.0
+    pendulum_height = 0.0
+    z_vel = 0.0
+    count = 0
 
     # Run until asked to exit.
     while not simulate.exitrequest:

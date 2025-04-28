@@ -55,6 +55,6 @@ if __name__ == '__main__':
     winner = run(config_path)
 
     #save model
-    with open("neat-model.pkl", "wb") as f:
+    with open("neat-model 6.pkl", "wb") as f:
         pickle.dump(winner, f)
     
