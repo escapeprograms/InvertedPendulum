@@ -233,6 +233,9 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     force = np.zeros((3,))
     torque = np.zeros((3,))
     down_posture_start_time = 0.0
+    pendulum_height = 0.0
+    z_vel = 0.0
+    count = 0
 
     # Run until asked to exit.
     while not simulate.exitrequest:
@@ -296,17 +299,23 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         push_force += 0.001
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
+
+                    # Update full-time "trackers"
+                    pendulum_height -= np.cos(d.qpos[1]) * 1 + np.sin(d.qpos[1] + d.qpos[3]) * 0.45 # Not being used rn
+                    z_vel += np.abs(d.qvel[6])
+                    count += 1
  
                     # if joint positions are out of range, exit simulation
                     # if we wait too long, end simulation
                     # if the last joint is bent over backward, end the simulation
-                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2) or balance_count >= 10 or d.qpos[4] < -np.pi/2:
+                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2) or balance_count >= 20 or d.qpos[4] < -np.pi/2:
                         print("Final Balance Count: ", balance_count)
                         print("Final time", d.time)
 
                         #update fitness score
                         #penalize too much sidways movement
-                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2)
+                        # Added a second term to punish z-velocity over the entire simulation
+                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2) - z_vel/count
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
                         g += 1
