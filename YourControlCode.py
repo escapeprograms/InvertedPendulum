@@ -32,7 +32,7 @@ class GenomeCtrl:
         self.d.ctrl[1] += - 20
         self.d.ctrl[3] += - 20
 
-        # Oppose gravity - use this for models 4 and 5
+        # Oppose gravity - use this for models 3+
         # p = self.makeshift_grav()
         # for i in range(6):
         #     self.d.ctrl[i] += p[i]

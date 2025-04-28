@@ -308,7 +308,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     # if joint positions are out of range, exit simulation
                     # if we wait too long, end simulation
                     # if the last joint is bent over backward, end the simulation
-                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2) or balance_count >= 20 or d.qpos[4] < -np.pi/2:
+                    if np.any(np.abs(d.qpos[6]) > np.pi/1.2) or balance_count >= 10 or d.qpos[4] < -np.pi/2:
                         print("Final Balance Count: ", balance_count)
                         print("Final time", d.time)
 
