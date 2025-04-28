@@ -226,6 +226,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     # CPU-sim synchronization point.
     synccpu = 0.0
     syncsim = 0.0
+
+    frame_count = 0#frame counter
+    total_movement = 0
+    total_instability = 0
     next_pushing_time = 0.5
     push_force = 0.0005
     balance_count = 0
@@ -280,7 +284,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
 
                     # Update control signal
                     pend_ctrl.CtrlUpdate()
-                    pushing_trial_gap = 2
+                    pushing_trial_gap = 4
                     pushing_duration = 0.1
                     
                     if(next_pushing_time < d.time and d.time < next_pushing_time + pushing_duration/2):
@@ -296,15 +300,17 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     if(next_pushing_time + pushing_duration + 0.5 < d.time):
                         balance_count += 1
                         next_pushing_time += pushing_trial_gap
-                        push_force += 0.001 # We can scale the force faster, or scale the increase in force as more generations occur
+                        push_force += 0.005
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
 
-                    # Update full-time "trackers"
-                    pendulum_height -= np.cos(d.qpos[1]) * 1 + np.sin(d.qpos[1] + d.qpos[3]) * 0.45 # Not being used rn
-                    z_vel += np.abs(d.qvel[6])
-                    count += 1
- 
+                    #update max movement
+                    total_movement += np.abs(d.qvel[0])
+                    #update instability total
+                    total_instability += np.abs(d.qvel[6])
+                    #update frame count
+                    frame_count += 1
+
                     # if joint positions are out of range, exit simulation
                     # if we wait too long, end simulation
                     # if the last joint is bent over backward, end the simulation
@@ -314,8 +320,14 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
 
                         #update fitness score
                         #penalize too much sidways movement
-                        # Added a second term to punish z-velocity over the entire simulation
-                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2)# - z_vel/count
+                        time_held = d.time
+                        movement_penalty = total_movement/frame_count
+                        instability_penalty = total_instability/frame_count #estimate the amount of "wobbling" there is
+                        genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4
+
+                        
+                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty)
+                        print("Fitness: ", genomes[g].fitness)
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
                         g += 1
@@ -323,9 +335,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                             # set exit simulation flag
                             EXIT_PLS = True
                             # exit(0)
-                        
+                        frame_count = 0
                         balance_count = 0
-
+                        total_movement = 0
+                        total_instability = 0
                         next_pushing_time = 0.5
                         push_force = 0.0005
                         balance_count = 0
@@ -573,7 +586,8 @@ if __name__ == '__main__':
     robot_model = os.path.join(dir_path, "./Robot/miniArm_with_pendulum.xml")
 
     # Initialize the viewer and start the simulation
-    genes = [YourControlCode.Genome(0,None), YourControlCode.Genome(0,None)]
-    launch_from_path(robot_model, genes)
+    print("Please run Train.py instead.")
+    # genes = [YourControlCode.Genome(0,None), YourControlCode.Genome(0,None)]
+    # launch_from_path(robot_model, genes)
 
-    print(genes[0].fitness, "FITNESS")
+    # print(genes[0].fitness, "FITNESS")
