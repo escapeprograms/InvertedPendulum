@@ -296,7 +296,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     if(next_pushing_time + pushing_duration + 0.5 < d.time):
                         balance_count += 1
                         next_pushing_time += pushing_trial_gap
-                        push_force += 0.001
+                        push_force += 0.001 # We can scale the force faster, or scale the increase in force as more generations occur
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
 
@@ -315,7 +315,7 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         #update fitness score
                         #penalize too much sidways movement
                         # Added a second term to punish z-velocity over the entire simulation
-                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2) - z_vel/count
+                        genomes[g].fitness = d.time - np.abs(d.qvel[0]/2)# - z_vel/count
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
                         g += 1
