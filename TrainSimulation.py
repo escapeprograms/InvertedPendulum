@@ -230,8 +230,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     frame_count = 0#frame counter
     total_movement = 0
     total_instability = 0
+    total_displacement = 0
     next_pushing_time = 0.5
     push_force = 0.0005
+    push_force_dot = 0.0 # Adding an increasing push force
     balance_count = 0
     point = np.zeros((3,))
     force = np.zeros((3,))
@@ -298,9 +300,12 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         mujoco.mj_applyFT(m, d, force, torque, point, pend_id, d.qfrc_applied)
                     
                     if(next_pushing_time + pushing_duration + 0.5 < d.time):
+                    # if(next_pushing_time + pushing_duration + 0.2 < d.time): # Trying a shorter time delta between pushes. Not sure how it'll go.
+                    # Note: Shorter time delta seemed to result in the arm "cycling" faster, trying to get z-axis rot vel to 0 at the wrong times.
                         balance_count += 1
                         next_pushing_time += pushing_trial_gap
-                        push_force += 0.005
+                        push_force_dot += 0.0005 # Testing an increasing change in force over time so the model can try to perform better under high forces
+                        push_force += 0.003 + push_force_dot # 0.005
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
 
@@ -308,6 +313,8 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                     total_movement += np.abs(d.qvel[0])
                     #update instability total
                     total_instability += np.abs(d.qvel[6])
+                    # Update total_displacement
+                    total_displacement += np.abs(d.qpos[6])
                     #update frame count
                     frame_count += 1
 
@@ -323,10 +330,13 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         time_held = d.time
                         movement_penalty = total_movement/frame_count
                         instability_penalty = total_instability/frame_count #estimate the amount of "wobbling" there is
-                        genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4
+                        displacement_penalty = total_displacement/frame_count #estimate the amount of "wobbling" there is
+                        # genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4
+                        genomes[g].fitness = time_held + 1/movement_penalty + 3/instability_penalty + 0.08/displacement_penalty
+                        # genomes[g].fitness = time_held + 1/movement_penalty + 2/instability_penalty + max(10, np.abs(0.1/(displacement_penalty - 0.03))) #Want to try this nextS
 
                         
-                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty)
+                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty, "displacement penalty", displacement_penalty)
                         print("Fitness: ", genomes[g].fitness)
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
@@ -339,8 +349,10 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         balance_count = 0
                         total_movement = 0
                         total_instability = 0
+                        total_displacement = 0
                         next_pushing_time = 0.5
                         push_force = 0.0005
+                        push_force_dot = 0.0
                         balance_count = 0
                         point = np.zeros((3,))
                         force = np.zeros((3,))

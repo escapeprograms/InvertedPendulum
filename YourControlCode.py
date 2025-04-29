@@ -20,7 +20,7 @@ class GenomeCtrl:
 
     def CtrlUpdate(self):
         #angle of pendulum
-        #print(self.d.qpos[6])
+        # print(self.d.qpos[6])
         forces = self.network.activate(self.d.qpos)
         for i in range(6):
             self.d.ctrl[i] = 10*forces[i]
@@ -28,11 +28,11 @@ class GenomeCtrl:
         for i in range(1, 6):
             self.d.ctrl[i] += 150.0*(self.init_qpos[i] - self.d.qpos[i]) - 5.2 *self.d.qvel[i]
         
-        # #upward-facing joints
+        # basic-crutch control - resist gravity on upward-facing joints
         # self.d.ctrl[1] += - 20
         # self.d.ctrl[3] += - 20
 
-        # Oppose gravity - use this for models 3+
+        # grav_comp function/control
         # p = self.makeshift_grav()
         # for i in range(6):
         #     self.d.ctrl[i] += p[i]
@@ -42,12 +42,12 @@ class GenomeCtrl:
         # since ideally they will not rotate and their torque will be handled by the z-axis rotation,
         # and we want to allow the model full control of the one z-axis joint for dealing with the mass.
         for i in range(6):
-            if i == 0 or i == 2 or i == 5:
-                continue
-            else:
-                self.d.ctrl[i] += self.d.qfrc_bias[i]
+            # if i==0 or i == 2 or i == 5: # Testing with z-axis OSC next
+            #     continue
+            # else:
+            self.d.ctrl[i] += self.d.qfrc_bias[i]
 
-        # Extra help to emphasize keeping the pendulum at the same height. Accounts for compounding error. Not included in the model, as it opposes intentional change in height.
+        # Extra help to emphasize keeping the pendulum at the same height. Accounts for compounding integration error. Model should learn to handle the resistance.
         # self.d.ctrl[1] -= 0.4 * np.sin(self.d.qpos[1])
         # self.d.ctrl[3] -= 0.3 * np.sin(self.d.qpos[1] + self.d.qpos[3])
         # self.d.ctrl[4] -= 0.2 * np.sin(self.d.qpos[1] + self.d.qpos[3] + self.d.qpos[4])
@@ -197,10 +197,8 @@ class GenomeCtrl:
 #Your final Control
 class YourCtrl(GenomeCtrl):
     def __init__(self, m:mujoco.MjModel, d: mujoco.MjData):
-        #load model
-        with open("models/neat-model osc 1.pkl", "rb") as f:
         #load model from folder
-        with open("models/neat-model 7.pkl", "rb") as f:
+        with open("models/osc/neat-model osc 3.pkl", "rb") as f:
             network = pickle.load(f)
         
         super().__init__(m, d, network)
