@@ -40,7 +40,7 @@ def run(config_file):
     # p.add_reporter(neat.Checkpointer(5))
 
     # Run for up to 20 generations.
-    winner = p.run(eval_genomes, 20)
+    winner = p.run(eval_genomes, 5)
 
     winner_net = neat.nn.FeedForwardNetwork.create(winner, config)
     return winner_net
@@ -55,6 +55,6 @@ if __name__ == '__main__':
     winner = run(config_path)
 
     #save model
-    with open("neat-model osc 3.pkl", "wb") as f:
+    with open("neat-model osc 4.pkl", "wb") as f:
         pickle.dump(winner, f)
     

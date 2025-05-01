@@ -243,6 +243,11 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
     z_vel = 0.0
     count = 0
 
+    # Benchmarking
+    num_10 = 0
+    avr_time = 0.0
+    avr_score = 0.0
+
     # Run until asked to exit.
     while not simulate.exitrequest:
 
@@ -300,12 +305,12 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         mujoco.mj_applyFT(m, d, force, torque, point, pend_id, d.qfrc_applied)
                     
                     if(next_pushing_time + pushing_duration + 0.5 < d.time):
-                    # if(next_pushing_time + pushing_duration + 0.2 < d.time): # Trying a shorter time delta between pushes. Not sure how it'll go.
-                    # Note: Shorter time delta seemed to result in the arm "cycling" faster, trying to get z-axis rot vel to 0 at the wrong times.
+                    # if(next_pushing_time + pushing_duration + 0.2 < d.time):
+                    # Shorter time delta seemed to result in the arm "cycling" faster, trying to get z-axis rot vel to 0 at the wrong times.
                         balance_count += 1
                         next_pushing_time += pushing_trial_gap
-                        push_force_dot += 0.0005 # Testing an increasing change in force over time so the model can try to perform better under high forces
-                        push_force += 0.003 + push_force_dot # 0.005
+                        # push_force_dot += 0.0005 # Increasing change in push force
+                        push_force += 0.001 #0.005 # 0.003 + push_force_dot
                         print("Balance Count: ", balance_count)
                         print("Next Pushing Force: ", push_force)
 
@@ -325,18 +330,20 @@ def _physics_loop(simulate: _Simulate, loader: Optional[_InternalLoaderType], ge
                         print("Final Balance Count: ", balance_count)
                         print("Final time", d.time)
 
+                        num_10 += (balance_count == 10)
+                        avr_time += d.time
+                        avr_score += balance_count
+
                         #update fitness score
                         #penalize too much sidways movement
                         time_held = d.time
                         movement_penalty = total_movement/frame_count
                         instability_penalty = total_instability/frame_count #estimate the amount of "wobbling" there is
                         displacement_penalty = total_displacement/frame_count #estimate the amount of "wobbling" there is
-                        # genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4
-                        genomes[g].fitness = time_held + 1/movement_penalty + 3/instability_penalty + 0.08/displacement_penalty
-                        # genomes[g].fitness = time_held + 1/movement_penalty + 2/instability_penalty + max(10, np.abs(0.1/(displacement_penalty - 0.03))) #Want to try this nextS
-
+                        genomes[g].fitness = time_held + 1/instability_penalty - movement_penalty/4 # Trained basic_crutch with this
+                        # genomes[g].fitness = time_held + 1/movement_penalty + 3/instability_penalty + 0.08/displacement_penalty # Trained OSC with this
                         
-                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty, "displacement penalty", displacement_penalty)
+                        print("time held", time_held, "mvt penalty", movement_penalty,"instability penalty", instability_penalty)
                         print("Fitness: ", genomes[g].fitness)
                         # print(np.abs(d.qvel[0]))
                         #reset sim for next controller
