@@ -21,13 +21,13 @@ class GenomeCtrl:
     def CtrlUpdate(self):
         #angle of pendulum
         # print(self.d.qpos[6])
-        # forces = self.network.activate(self.d.qpos)
-        # for i in range(6):
-        #     self.d.ctrl[i] = 10*forces[i]
+        forces = self.network.activate(self.d.qpos)
+        for i in range(6):
+            self.d.ctrl[i] = 10*forces[i]
 
         # PD control
-        # for i in range(1, 6):
-        #     self.d.ctrl[i] += 150.0*(self.init_qpos[i] - self.d.qpos[i]) - 5.2 *self.d.qvel[i]
+        for i in range(1, 6):
+            self.d.ctrl[i] += 150.0*(self.init_qpos[i] - self.d.qpos[i]) - 5.2 *self.d.qvel[i]
         
         # basic-crutch control - resist gravity on upward-facing joints
         self.d.ctrl[1] += - 20
@@ -136,7 +136,7 @@ class GenomeCtrl:
 class YourCtrl(GenomeCtrl):
     def __init__(self, m:mujoco.MjModel, d: mujoco.MjData):
         #load model from folder
-        with open("models/osc/neat-model osc 3.pkl", "rb") as f:
+        with open("models/basic-crutch/neat-model 7.pkl", "rb") as f:
             network = pickle.load(f)
         
         super().__init__(m, d, network)
