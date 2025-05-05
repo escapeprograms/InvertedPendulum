@@ -62,7 +62,7 @@ if __name__ == '__main__':
     winner, stats = run(config_path)
 
     #create graph of training
-    plot_stats(stats, ylog=False, view=True, title="Basic Crutch Fitness", filename='basic_crutch_fitness.svg')
+    plot_stats(stats, ylog=False, view=True, title="OSC Stabilizer", filename='osc_fitness.svg')
 
     #save model
     with open("neat-model 8.pkl", "wb") as f:

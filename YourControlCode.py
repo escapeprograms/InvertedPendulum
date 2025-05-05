@@ -6,7 +6,7 @@ import neat
 import pickle
 #controller defined by a NN
 class GenomeCtrl:
-    def __init__(self, m:mujoco.MjModel, d: mujoco.MjData, network: neat.nn.FeedForwardNetwork):
+    def __init__(self, m:mujoco.MjModel, d: mujoco.MjData, network: neat.nn.FeedForwardNetwork, stabilizer="constant"):
         self.m = m
         self.d = d
         self.init_qpos = d.qpos.copy()
@@ -17,6 +17,10 @@ class GenomeCtrl:
 
         #network
         self.network = network
+
+        #stabilizer type: constant, dynamic, osc
+        #Note: change this directly when training
+        self.stabilizer = "osc"#stabilizer
 
     def CtrlUpdate(self):
         #angle of pendulum
@@ -30,30 +34,34 @@ class GenomeCtrl:
             self.d.ctrl[i] += 150.0*(self.init_qpos[i] - self.d.qpos[i]) - 5.2 *self.d.qvel[i]
         
         # basic-crutch control - resist gravity on upward-facing joints
-        self.d.ctrl[1] += - 20
-        self.d.ctrl[3] += - 20
+        if self.stabilizer == "constant":
+            self.d.ctrl[1] += - 20
+            self.d.ctrl[3] += - 20
 
-        # # grav_comp control
-        # p = self.grav_comp()
-        # for i in range(6):
-        #     self.d.ctrl[i] += p[i]
-        # self.d.ctrl[4] += 0.2 # Stabilize joint 4
+        # grav_comp control
+        if self.stabilizer == "dynamic":
+            p = self.grav_comp()
+            for i in range(6):
+                self.d.ctrl[i] += p[i]
+            self.d.ctrl[4] += 0.2 # Stabilize joint 4
 
         # OSC for JUST y-axis joints - we want to keep x-axis joints fully based on the model,
         # since ideally they will not rotate and their torque will be handled by the z-axis rotation,
         # and we want to allow the model full control of the one z-axis joint for dealing with the mass.
-        # for i in range(6):
-        #     self.d.ctrl[i] += self.d.qfrc_bias[i]
+        if self.stabilizer == "osc":
+            for i in range(6):
+                self.d.ctrl[i] += self.d.qfrc_bias[i]
 
-        # Extra help to emphasize keeping the pendulum at the same height. Accounts for compounding integration error.
-        # Used in OSC model 2 and in balancing with OSC demonstration (balanced with no external force).
-        # self.d.ctrl[1] -= 0.4 * np.sin(self.d.qpos[1])
-        # self.d.ctrl[3] -= 0.3 * np.sin(self.d.qpos[1] + self.d.qpos[3])
-        # self.d.ctrl[4] -= 0.2 * np.sin(self.d.qpos[1] + self.d.qpos[3] + self.d.qpos[4])
+            # Extra help to emphasize keeping the pendulum at the same height. Accounts for compounding integration error.
+            # Used in OSC model 2 and in balancing with OSC demonstration (balanced with no external force).
+            # self.d.ctrl[1] -= 0.4 * np.sin(self.d.qpos[1])
+            # self.d.ctrl[3] -= 0.3 * np.sin(self.d.qpos[1] + self.d.qpos[3])
+            # self.d.ctrl[4] -= 0.2 * np.sin(self.d.qpos[1] + self.d.qpos[3] + self.d.qpos[4])
 
         return True
 
-    # Calculate OSC to oppose gravity, Coriolis, and centrifugal forces. Note: OSC is stored in Mujoco as qfrc_bias, so this function is not used.
+    # Calculate OSC to oppose gravity, Coriolis, and centrifugal forces. 
+    # DEPRECATED: exact OSC is stored in Mujoco as qfrc_bias.
     def osc(self):
         # Find the position of the end effector in the global frame
         ee_id = self.m.geom("mass").id
@@ -136,10 +144,10 @@ class GenomeCtrl:
 class YourCtrl(GenomeCtrl):
     def __init__(self, m:mujoco.MjModel, d: mujoco.MjData):
         #load model from folder
-        with open("models/basic-crutch/neat-model 7.pkl", "rb") as f:
+        with open("models/constant torque stabilizer/neat-model 7.pkl", "rb") as f:
             network = pickle.load(f)
         
-        super().__init__(m, d, network)
+        super().__init__(m, d, network, stabilizer="constant")
         self.m = m
         self.d = d
         self.init_qpos = d.qpos.copy()
